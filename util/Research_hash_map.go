@@ -2,8 +2,8 @@ package util
 
 import (
 	farmhash "github.com/leemcloughlin/gofarmhash"
+	"golang.org/x/exp/maps"
 	"sync"
-	//"golang.org/x/exp/maps"
 )
 
 type ResearchMap struct {
@@ -52,4 +52,21 @@ func (m *ResearchMap) Get(key string) (any, bool) {
 	defer m.locks[segId].RUnlock()
 	res, ok := m.mps[segId][key]
 	return res, ok
+}
+
+// 创建迭代器
+func (m *ResearchMap) CreateIterator() *ReMapIterator {
+	keys := make([][]string, 0, len(m.mps))
+
+	for _, mp := range m.mps {
+		//取出每个分片下的key
+		keys = append(keys, maps.Keys(mp))
+	}
+
+	return &ReMapIterator{
+		remap:    m,
+		keys:     keys,
+		rowIndex: 0,
+		colIndex: 0,
+	}
 }

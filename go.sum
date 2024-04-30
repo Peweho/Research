@@ -1,2 +1,4 @@
 github.com/leemcloughlin/gofarmhash v0.0.0-20160919192320-0a055c5b87a8 h1:cNufk+iHS/ZChvjjNI1i/ABH5pMIaKufavmiVrgu62Q=
 github.com/leemcloughlin/gofarmhash v0.0.0-20160919192320-0a055c5b87a8/go.mod h1:f59bwMArqO7YmZZv21lKDV0fwP4N/vJZtL1/jv8wgaY=
+golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f h1:99ci1mjWVBWwJiEKYY6jWa4d2nTQVIEhZIptnrVb1XY=
+golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f/go.mod h1:/lliqkxwWAhPjf5oSOIJup2XcqJaw8RGS6k3TGEc7GI=
