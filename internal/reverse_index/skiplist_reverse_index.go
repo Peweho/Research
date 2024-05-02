@@ -56,3 +56,17 @@ func (m *SkipListReverseIndex) Add(doc types.Document) {
 		lock.Unlock()
 	}
 }
+
+//删除doc
+func (m *SkipListReverseIndex) Delete(intId uint64, keyWord *types.KeyWord) {
+	key := keyWord.ToString()
+	lock := m.getLock(key)
+	lock.Lock()
+
+	if val, exist := m.table.Get(key); exist {
+		skipList := val.(*skiplist.SkipList)
+		skipList.Remove(intId)
+	}
+
+	lock.Unlock()
+}
