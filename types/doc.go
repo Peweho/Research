@@ -8,11 +8,11 @@ type KeyWord struct {
 }
 
 type Document struct {
-	ID          string
-	IntId       uint64
+	ID          string // 业务id
+	IntId       uint64 // 倒排索引上的id,即跳表上的key
 	BitsFeature *util.Bitmap
-	keywords    []KeyWord
-	Bytes       byte
+	Keywords    []KeyWord // 记录分词后的结果
+	Bytes       byte      //整个记录序列化
 }
 
 func (kw KeyWord) ToString() string {
