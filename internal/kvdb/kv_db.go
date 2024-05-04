@@ -2,7 +2,9 @@ package kvdb
 
 import (
 	"Research/util"
+	"errors"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -29,20 +31,24 @@ type IKeyValueDB interface {
 }
 
 // Factory工厂模式，把类的创建和使用分隔开。Get函数就是一个工厂，它返回产品的接口，即它可以返回各种各样的具体产品。
-func GetKvdb(dbtype int, path string, optsRedis ...OptionsRedis) (IKeyValueDB, error) {
+func GetKvdb(dbtype int, path string) (IKeyValueDB, error) {
 	var db IKeyValueDB
 	switch dbtype {
 	case REDIS:
+		optsRedis, err := connectRemoteKvdb(path)
+		if err != nil {
+			return nil, err
+		}
 		db = NewRedis(optsRedis...)
 	case BADGER:
 		// todo: 添加这两个类
-		err := createFile(path)
+		err := createLocalKvdb(path)
 		if err != nil {
 			return nil, err
 		}
 		//db = new(Badger).WithDataPath(path)
 	default:
-		err := createFile(path)
+		err := createLocalKvdb(path)
 		if err != nil {
 			return nil, err
 		}
@@ -52,7 +58,7 @@ func GetKvdb(dbtype int, path string, optsRedis ...OptionsRedis) (IKeyValueDB, e
 	return db, err
 }
 
-func createFile(path string) error { //通过Get函数【使用类】
+func createLocalKvdb(path string) error { //通过Get函数【使用类】
 	paths := strings.Split(path, "/")
 	parentPath := strings.Join(paths[0:len(paths)-1], "/") //父路径
 
@@ -73,4 +79,30 @@ func createFile(path string) error { //通过Get函数【使用类】
 		}
 	}
 	return nil
+}
+
+// 地址:端口号/密码/库编号 （“/” 不能省略）
+func connectRemoteKvdb(path string) ([]OptionsRedis, error) {
+	paths := strings.Split(path, "/")
+	if len(paths) != 3 || len(paths[0]) == 0 {
+		return nil, errors.New("参数不正确")
+	}
+
+	opts := make([]OptionsRedis, 0, 3)
+
+	opts = append(opts, WithOptionAddr(paths[0]))
+
+	if len(paths[1]) != 0 {
+		opts = append(opts, WithOptionPasswd(paths[1]))
+	}
+
+	if len(paths[2]) != 0 {
+		atoi, err := strconv.Atoi(paths[3])
+		if err != nil {
+			return nil, errors.New("参数库名，不正确")
+		}
+		opts = append(opts, WithOptionDbno(atoi))
+	}
+
+	return opts, nil
 }
