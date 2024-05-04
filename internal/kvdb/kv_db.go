@@ -13,7 +13,6 @@ const (
 	REDIS
 )
 
-// redis也是一种KV数据库，读者可以自行用redis实现IKeyValueDB接口
 type IKeyValueDB interface {
 	Open() error                              //初始化DB
 	GetDbPath() string                        //获取存储数据的目录
@@ -30,7 +29,30 @@ type IKeyValueDB interface {
 }
 
 // Factory工厂模式，把类的创建和使用分隔开。Get函数就是一个工厂，它返回产品的接口，即它可以返回各种各样的具体产品。
-func GetKvDb(dbtype int, path string) (IKeyValueDB, error) { //通过Get函数【使用类】
+func GetKvdb(dbtype int, path string, optsRedis ...OptionsRedis) (IKeyValueDB, error) {
+	var db IKeyValueDB
+	switch dbtype {
+	case REDIS:
+		db = NewRedis(optsRedis...)
+	case BADGER:
+		// todo: 添加这两个类
+		err := createFile(path)
+		if err != nil {
+			return nil, err
+		}
+		//db = new(Badger).WithDataPath(path)
+	default:
+		err := createFile(path)
+		if err != nil {
+			return nil, err
+		}
+		//db = new(Bolt).WithDataPath(path).WithBucket("radic") //Builder生成器模式
+	}
+	err := db.Open() //创建具体KVDB的细节隐藏在Open()函数里。在这里【创建类】
+	return db, err
+}
+
+func createFile(path string) error { //通过Get函数【使用类】
 	paths := strings.Split(path, "/")
 	parentPath := strings.Join(paths[0:len(paths)-1], "/") //父路径
 
@@ -39,27 +61,16 @@ func GetKvDb(dbtype int, path string) (IKeyValueDB, error) { //通过Get函数�
 		util.Log.Printf("create dir %s", parentPath)
 		err := os.MkdirAll(parentPath, os.ModePerm)
 		if err != nil {
-			return nil, err
+			return err
 		} //数字前的0或0o都表示八进制
 	} else { //父路径存在
 		if info.Mode().IsRegular() { //如果父路径是个普通文件，则把它删掉
 			util.Log.Printf("%s is a regular file, will delete it", parentPath)
 			err := os.Remove(parentPath)
 			if err != nil {
-				return nil, err
+				return err
 			}
 		}
 	}
-
-	var db IKeyValueDB
-	switch dbtype {
-	case BADGER:
-		//db = new(Badger).WithDataPath(path)
-	case REDIS:
-		db = new(Redis).WithDatePath(path)
-	default: //默认使用bolt
-		//db = new(Bolt).WithDataPath(path) //Builder生成器模式
-	}
-	err = db.Open() //创建具体KVDB的细节隐藏在Open()函数里。在这里【创建类】
-	return db, err
+	return nil
 }
