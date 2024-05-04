@@ -81,7 +81,7 @@ func createLocalKvdb(path string) error { //通过Get函数【使用类】
 	return nil
 }
 
-// 地址:端口号/密码/库编号 （“/” 不能省略）
+// pah参数：“地址:端口号/密码/库编号” （“/” 不能省略）
 func connectRemoteKvdb(path string) ([]OptionsRedis, error) {
 	paths := strings.Split(path, "/")
 	if len(paths) != 3 || len(paths[0]) == 0 {
