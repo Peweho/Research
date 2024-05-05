@@ -18,6 +18,7 @@ const (
 type ServiceHub struct {
 	client             *etcdv3.Client
 	heartbeatFrequency int64 //server每隔几秒钟不动向中心上报一次心跳（其实就是续一次租约）
+	loadBalancer       LoadBalancer
 }
 
 var (
@@ -47,10 +48,16 @@ func GetServiceHub(etcdServers []string, heartbeatFrequency int64) *ServiceHub {
 			serviceHub = &ServiceHub{
 				client:             client,
 				heartbeatFrequency: heartbeatFrequency, //租约的有效期
+				loadBalancer:       &Round{},
 			}
 		}
 	})
 	return serviceHub
+}
+
+// 更换负载均衡策略
+func (hub *ServiceHub) SetLoadBalancer(balancer LoadBalancer) {
+	hub.loadBalancer = balancer
 }
 
 // Regist 注册服务。 第一次注册向etcd写一个key，后续注册仅仅是在续约
@@ -121,6 +128,11 @@ func (hub *ServiceHub) GetServiceEndpoints(service string) []string {
 		}
 		return endpoints
 	}
+}
+
+// 先查找服务节点，再通过负载均衡策略从多个节点中选择合适节点
+func (hub *ServiceHub) GetServiceEndpoint(service string) string {
+	return hub.loadBalancer.Take(hub.GetServiceEndpoints(service))
 }
 
 // 关闭etcd client connection
