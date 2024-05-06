@@ -35,6 +35,15 @@ func GetServiceHub(etcdServers []string, heartbeatFrequency int64) *ServiceHub {
 		return serviceHub
 	}
 
+	// 检查etcd server格式 地址:端口号
+	for _, addr := range etcdServers {
+		split := strings.Split(addr, ":")
+		if len(split) != 2 {
+			util.Log.Fatalf("服务不正确，格式：\"地址:端口号\"")
+			return nil
+		}
+	}
+
 	hubOnce.Do(func() {
 		client, err := etcdv3.New(
 			etcdv3.Config{
@@ -79,7 +88,7 @@ func (hub *ServiceHub) Regist(service string, endpoint string, leaseID etcdv3.Le
 			//2.1、构造服务key
 			key := strings.TrimRight(SERVICE_ROOT_PATH, "/") + "/" + service + "/" + endpoint
 			//2.2、注册服务
-			if _, err := hub.client.Put(ctx, key, "", etcdv3.WithLease(leaseID)); err != nil {
+			if _, err := hub.client.Put(ctx, key, "", etcdv3.WithLease(lease.ID)); err != nil {
 				util.Log.Printf("写入服务%s对应的节点%s失败：%v", service, endpoint, err)
 				return lease.ID, err
 			} else {
