@@ -6,8 +6,10 @@ require (
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/huandu/skiplist v1.2.0
 	github.com/leemcloughlin/gofarmhash v0.0.0-20160919192320-0a055c5b87a8
+	go.etcd.io/etcd/api/v3 v3.5.13
 	go.etcd.io/etcd/client/v3 v3.5.13
 	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f
+	golang.org/x/time v0.5.0
 )
 
 require (
@@ -18,7 +20,6 @@ require (
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/onsi/gomega v1.33.1 // indirect
-	go.etcd.io/etcd/api/v3 v3.5.13 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.13 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
