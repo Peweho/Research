@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+option go_package="Research/util";
+
+package util;
+
+message Bitmap {
+      repeated uint64 bits  = 1;// 小端存储
+      int64 cap = 2;     // bit数
+      int64 code = 3;      // 编码
+}

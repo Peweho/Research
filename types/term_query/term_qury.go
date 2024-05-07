@@ -1,23 +1,24 @@
-package types
+package term_query
 
 import "strings"
+import "Research/types/doc"
 
 // 每个TermQuery只有一个属性有效
-type TermQuery struct {
-	KeyWord *KeyWord
-	Should  []*TermQuery
-	Must    []*TermQuery
-}
+//type TermQuery struct {
+//	KeyWord *KeyWord
+//	Should  []*TermQuery
+//	Must    []*TermQuery
+//}
 
 // 创建叶子结点的
 func NewTermQuery(field, word string) *TermQuery {
 	return &TermQuery{
-		KeyWord: &KeyWord{field, word},
+		Keyword: &doc.KeyWord{Field: field, Word: word},
 	}
 }
 
-func (q TermQuery) Empty() bool {
-	return q.KeyWord == nil && len(q.Must) == 0 && len(q.Should) == 0
+func (q *TermQuery) Empty() bool {
+	return q.Keyword == nil && len(q.Must) == 0 && len(q.Should) == 0
 }
 
 func (m *TermQuery) Or(querys ...*TermQuery) *TermQuery {
@@ -61,9 +62,9 @@ func (m *TermQuery) And(querys ...*TermQuery) *TermQuery {
 // 返回TermQuery的条件表达式
 func (m *TermQuery) ToString() string {
 	//1、判断是否是叶子结点
-	if m.KeyWord != nil {
+	if m.Keyword != nil {
 		//1.1、是叶子结点，直接返回keyword的tostring
-		return m.KeyWord.ToString()
+		return m.Keyword.ToString()
 	}
 	//2、判断哪一个属性有效
 	if len(m.Must) > 0 {
