@@ -1,5 +1,5 @@
 syntax = "proto3";
-option go_package="./term_query";
+option go_package="Research/types/term_query";
 package types;
 
 import "types/doc.proto";  //从-I指定的目录下寻找该proto文件

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package="./doc";
+option go_package="Research/types/doc";
 
 package types;
 

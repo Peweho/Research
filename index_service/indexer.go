@@ -2,7 +2,8 @@ package index_service
 
 import (
 	"Research/internal/kvdb"
-	"Research/types"
+	"Research/types/doc"
+	"Research/types/term_query"
 	"Research/util"
 	"bytes"
 	"encoding/gob"
@@ -37,7 +38,7 @@ func (indexer *Indexer) LoadFromIndexFile() int {
 		reader.Reset(v)
 		gobDecode := gob.NewDecoder(reader) // 构造gob反序列化器
 		// 反序列化
-		var doc types.Document
+		var doc doc.Document
 		err := gobDecode.Decode(&doc)
 		if err != nil {
 			util.Log.Printf("gob decode document failed：%s", err)
@@ -57,8 +58,8 @@ func (indexer *Indexer) Close() error {
 }
 
 // 向索引中添加(亦是更新)文档(如果已存在，会先删除)
-func (indexer *Indexer) AddDoc(doc types.Document) (int, error) {
-	docId := strings.TrimSpace(doc.ID)
+func (indexer *Indexer) AddDoc(doc doc.Document) (int, error) {
+	docId := strings.TrimSpace(doc.Id)
 	if len(docId) == 0 {
 		return 0, nil
 	}
@@ -93,14 +94,14 @@ func (indexer *Indexer) DeleteDoc(docId string) int {
 	reader := bytes.NewReader([]byte{})
 	reader.Reset(docByte)
 	decoder := gob.NewDecoder(reader)
-	var doc types.Document
+	var doc doc.Document
 	err = decoder.Decode(&doc)
 	if err != nil {
 		return 0
 	}
 	//读取文档关键字，删除倒排索引
 	for _, keyWord := range doc.Keywords {
-		indexer.reverseIndex.Delete(doc.IntId, &keyWord)
+		indexer.reverseIndex.Delete(doc.IntId, keyWord)
 	}
 	// 删除正排索引
 	_ = indexer.forwardIndex.Delete([]byte(docId))
@@ -109,7 +110,7 @@ func (indexer *Indexer) DeleteDoc(docId string) int {
 
 // 检索文档
 // 从倒排索引中查询文档业务id，再从正排索引查询完整文档
-func (indexer *Indexer) Search(query *types.TermQuery, onFlag *util.Bitmap, offFlag *util.Bitmap, orFlags []*util.Bitmap) []*types.Document {
+func (indexer *Indexer) Search(query *term_query.TermQuery, onFlag *util.Bitmap, offFlag *util.Bitmap, orFlags []*util.Bitmap) []*doc.Document {
 	// 1、从倒排索引中查询文档业务id
 	searchResult := indexer.reverseIndex.Search(query, onFlag, offFlag, orFlags)
 	if len(searchResult) == 0 {
@@ -126,7 +127,7 @@ func (indexer *Indexer) Search(query *types.TermQuery, onFlag *util.Bitmap, offF
 	}
 	//3、序列化文档
 	reader := bytes.NewReader([]byte{})
-	result := make([]*types.Document, 0, len(searchResult))
+	result := make([]*doc.Document, 0, len(searchResult))
 	for _, docByte := range docs {
 		if len(docByte) == 0 {
 			continue
@@ -134,7 +135,7 @@ func (indexer *Indexer) Search(query *types.TermQuery, onFlag *util.Bitmap, offF
 		//反序列化
 		reader.Reset(docByte)
 		decoder := gob.NewDecoder(reader)
-		var doc types.Document
+		var doc doc.Document
 		err = decoder.Decode(&doc)
 		if err != nil {
 			return nil

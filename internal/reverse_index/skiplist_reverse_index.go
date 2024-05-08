@@ -1,7 +1,8 @@
 package reverse_index
 
 import (
-	"Research/types"
+	"Research/types/doc"
+	"Research/types/term_query"
 	"Research/util"
 	"github.com/huandu/skiplist"
 	farmhash "github.com/leemcloughlin/gofarmhash"
@@ -35,14 +36,14 @@ func (indexer SkipListReverseIndex) getLock(key string) *sync.RWMutex {
 }
 
 // 添加文档
-func (m *SkipListReverseIndex) Add(doc types.Document) {
+func (m *SkipListReverseIndex) Add(doc doc.Document) {
 	for _, keyWord := range doc.Keywords {
 		key := keyWord.ToString()
 		//对可能相同的key加锁
 		lock := m.getLock(key)
 		lock.Lock()
 
-		skipListValue := &SkipListValue{Id: doc.ID, BitsFeature: doc.BitsFeature}
+		skipListValue := &SkipListValue{Id: doc.Id, BitsFeature: doc.BitsFeature}
 		if val, exist := m.table.Get(key); !exist {
 			//不存在，加入key，创建跳表
 			skipList := skiplist.New(skiplist.Uint64)
@@ -58,7 +59,7 @@ func (m *SkipListReverseIndex) Add(doc types.Document) {
 }
 
 // 删除doc
-func (m *SkipListReverseIndex) Delete(intId uint64, keyWord *types.KeyWord) {
+func (m *SkipListReverseIndex) Delete(intId uint64, keyWord *doc.KeyWord) {
 	key := keyWord.ToString()
 	lock := m.getLock(key)
 	lock.Lock()
@@ -72,7 +73,7 @@ func (m *SkipListReverseIndex) Delete(intId uint64, keyWord *types.KeyWord) {
 }
 
 // 根据查询表达式查找结果,返回业务id集合
-func (m *SkipListReverseIndex) Search(q *types.TermQuery, onFlag *util.Bitmap, offFlag *util.Bitmap, orFlags []*util.Bitmap) []string {
+func (m *SkipListReverseIndex) Search(q *term_query.TermQuery, onFlag *util.Bitmap, offFlag *util.Bitmap, orFlags []*util.Bitmap) []string {
 	//获取查询结果
 	search := m.search(q, onFlag, offFlag, orFlags)
 	if search == nil {
@@ -90,12 +91,12 @@ func (m *SkipListReverseIndex) Search(q *types.TermQuery, onFlag *util.Bitmap, o
 }
 
 // 根据查询表达式查找结果，保存在跳表中
-func (m *SkipListReverseIndex) search(q *types.TermQuery, onFlag *util.Bitmap, offFlag *util.Bitmap, orFlags []*util.Bitmap) *skiplist.SkipList {
+func (m *SkipListReverseIndex) search(q *term_query.TermQuery, onFlag *util.Bitmap, offFlag *util.Bitmap, orFlags []*util.Bitmap) *skiplist.SkipList {
 	//根据查询表达式分三种情况
 	//1、存在关键字
-	if q.KeyWord != nil {
+	if q.Keyword != nil {
 		res := skiplist.New(skiplist.Uint64)
-		key := q.KeyWord.ToString()
+		key := q.Keyword.ToString()
 		//得到关键字的跳表
 		value, exist := m.table.Get(key)
 
