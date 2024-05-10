@@ -147,8 +147,20 @@ func (r *Redis) IterDB(fn func(k []byte, v []byte) error) int64 {
 }
 
 func (r *Redis) IterKey(fn func(k []byte) error) int64 {
-	//TODO implement me
-	panic("implement me")
+	var cursor uint64 = 0
+	var ans int64 = 0
+	for {
+		keys, cursor := r.db.Scan(cursor, ".*", 1000).Val()
+		ans += int64(len(keys))
+		for i := 0; i < len(keys); i++ {
+			// todo: 错误处理
+			_ = fn([]byte(keys[i]))
+		}
+		if cursor == 0 {
+			break
+		}
+	}
+	return ans
 }
 
 func (r *Redis) Close() error {
