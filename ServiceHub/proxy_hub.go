@@ -1,4 +1,4 @@
-package index_service
+package ServiceHub
 
 import (
 	"Research/util"

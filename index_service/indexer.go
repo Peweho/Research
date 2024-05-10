@@ -145,3 +145,12 @@ func (indexer *Indexer) Search(query *term_query.TermQuery, onFlag *util.Bitmap,
 	}
 	return result
 }
+
+func (indexer *Indexer) Count() int {
+	res := 0
+	indexer.forwardIndex.IterKey(func(k []byte) error {
+		res++
+		return nil
+	})
+	return res
+}
