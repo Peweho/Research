@@ -81,7 +81,7 @@ type IndexServiceServer interface {
 	AddDoc(context.Context, *doc.Document) (*AffectedCount, error)
 	Search(context.Context, *SearchRequest) (*SearchResult, error)
 	Count(context.Context, *CountRequest) (*AffectedCount, error)
-	mustEmbedUnimplementedIndexServiceServer()
+	//mustEmbedUnimplementedIndexServiceServer()
 }
 
 // UnimplementedIndexServiceServer must be embedded to have forward compatible implementations.

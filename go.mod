@@ -11,6 +11,7 @@ require (
 	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f
 	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.34.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (

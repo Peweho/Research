@@ -7,7 +7,6 @@ import (
 	etcdv3 "go.etcd.io/etcd/client/v3"
 	"strings"
 	"sync"
-	"time"
 )
 
 const (
@@ -29,36 +28,17 @@ var (
 // GetServiceHub 单例模式，返回服务注册中心实例
 // etcdServers 地址列表
 // heartbeatFrequency 心跳频率，使用心跳机制保证连接
-func GetServiceHub(etcdServers []string, heartbeatFrequency int64) *ServiceHub {
+func GetServiceHub(client *etcdv3.Client, heartbeatFrequency int64) *ServiceHub {
 	// 如果serviceHub被实例化直接返回
 	if serviceHub != nil {
 		return serviceHub
 	}
 
-	// 检查etcd server格式 地址:端口号
-	for _, addr := range etcdServers {
-		split := strings.Split(addr, ":")
-		if len(split) != 2 {
-			util.Log.Fatalf("服务不正确，格式：\"地址:端口号\"")
-			return nil
-		}
-	}
-
 	hubOnce.Do(func() {
-		client, err := etcdv3.New(
-			etcdv3.Config{
-				Endpoints:   etcdServers,
-				DialTimeout: 3 * time.Second,
-			},
-		)
-		if err != nil {
-			util.Log.Fatalf("连接不上etcd服务器: %v", err) //发生log.Fatal时go进程会直接退出
-		} else {
-			serviceHub = &ServiceHub{
-				client:             client,
-				heartbeatFrequency: heartbeatFrequency, //租约的有效期
-				loadBalancer:       &Round{},
-			}
+		serviceHub = &ServiceHub{
+			client:             client,
+			heartbeatFrequency: heartbeatFrequency, //租约的有效期
+			loadBalancer:       &Round{},
 		}
 	})
 	return serviceHub

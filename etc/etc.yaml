@@ -1,0 +1,30 @@
+# etcd配置
+etcd:
+  endpoints:
+  - 192.168.92.201:2379
+  - 192.168.92.201:2372
+  dialTimeout: 300
+# 正排索引配置
+forwardindex:
+  dbType: 1
+  dateDir: 192.168.92.201:6379
+# 倒排索引配置
+reverseindex:
+  indexType: 1
+  docNumEstimate: 1000
+# 单节点还是集群
+configType: proxy
+# 分布式相关配置
+distributed:
+  servers:
+  - 192.168.92.201:2379
+  - 192.168.92.201:2372
+# 服务注册中心配置
+servicehub:
+  serviceHubType: cluster
+  qps: 10
+  heartbeatFrequency: 3
+# node节点配置
+server :
+  nodeIp : 192.168.92.201
+  port : 5455

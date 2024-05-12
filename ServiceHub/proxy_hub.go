@@ -34,14 +34,14 @@ var (
 )
 
 // proxy也是单例模式
-func GetServiceHubProxy(etcdServers []string, heartbeatFrequency int64, qps int) *HubProxy {
+func GetServiceHubProxy(client *etcdv3.Client, heartbeatFrequency int64, qps int) *HubProxy {
 	if proxy != nil {
 		return proxy
 	}
 
 	proxyOnce.Do(func() {
 		proxy = &HubProxy{
-			ServiceHub:    GetServiceHub(etcdServers, heartbeatFrequency),
+			ServiceHub:    GetServiceHub(client, heartbeatFrequency),
 			endpointCache: sync.Map{},
 			limiter:       rate.NewLimiter(rate.Every(time.Duration(1e9/qps)*time.Nanosecond), qps), //每隔1E9/qps纳秒产生一个令牌，即一秒钟之内产生qps个令牌。令牌桶的容量为qps
 			watched:       sync.Map{},
