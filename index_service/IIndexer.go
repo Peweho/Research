@@ -9,7 +9,7 @@ import (
 type IIndexer interface {
 	AddDoc(*doc.Document) (int, error)
 	DeleteDoc(docId string) int
-	Search(query *term_query.TermQuery, onFlag util.Bitmap, offFlag util.Bitmap, orFlags []*util.Bitmap) []*doc.Document
+	Search(query *term_query.TermQuery, onFlag *util.Bitmap, offFlag *util.Bitmap, orFlags []*util.Bitmap) []*doc.Document
 	Count() int
 	Close() error
 }

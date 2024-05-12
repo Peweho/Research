@@ -123,7 +123,7 @@ func (s *Sentinel) DeleteDoc(docId string) int {
 }
 
 // 从集群上查找，合并查询的结果
-func (s *Sentinel) Search(query *term_query.TermQuery, onFlag util.Bitmap, offFlag util.Bitmap, orFlags []*util.Bitmap) []*doc.Document {
+func (s *Sentinel) Search(query *term_query.TermQuery, onFlag *util.Bitmap, offFlag *util.Bitmap, orFlags []*util.Bitmap) []*doc.Document {
 	//1、获取服务器
 	endpoints := s.hub.GetServiceEndpoints(INDEX_SERVICE)
 	if len(endpoints) == 0 {
@@ -146,7 +146,11 @@ func (s *Sentinel) Search(query *term_query.TermQuery, onFlag util.Bitmap, offFl
 			//3、创建客户端
 			client := index.NewIndexServiceClient(conn)
 			//4、发送grpc请求
-			affected, err := client.Search(context.Background(), &index.SearchRequest{})
+			affected, err := client.Search(context.Background(), &index.SearchRequest{
+				OnFlag:  onFlag,
+				OffFlag: offFlag,
+				OrFlags: orFlags,
+			})
 			if err != nil {
 				util.Log.Printf("search from cluster failed: %s", err)
 			} else {
@@ -180,7 +184,7 @@ func (s *Sentinel) Search(query *term_query.TermQuery, onFlag util.Bitmap, offFl
 	return res
 }
 
-func (s *Sentinel) Count() int32 {
+func (s *Sentinel) Count() int {
 	//1、获取服务器
 	endpoints := s.hub.GetServiceEndpoints(INDEX_SERVICE)
 	if len(endpoints) == 0 {
@@ -212,7 +216,7 @@ func (s *Sentinel) Count() int32 {
 		}(endpoint)
 	}
 	wg.Wait()
-	return res
+	return int(res)
 }
 
 func (s *Sentinel) Close() error {

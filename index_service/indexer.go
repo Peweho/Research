@@ -58,7 +58,7 @@ func (indexer *Indexer) Close() error {
 }
 
 // 向索引中添加(亦是更新)文档(如果已存在，会先删除)
-func (indexer *Indexer) AddDoc(doc doc.Document) (int, error) {
+func (indexer *Indexer) AddDoc(doc *doc.Document) (int, error) {
 	docId := strings.TrimSpace(doc.Id)
 	if len(docId) == 0 {
 		return 0, nil
@@ -79,7 +79,7 @@ func (indexer *Indexer) AddDoc(doc doc.Document) (int, error) {
 	}
 
 	//写入倒排索引
-	indexer.reverseIndex.Add(doc)
+	indexer.reverseIndex.Add(*doc)
 	return 1, nil
 }
 
