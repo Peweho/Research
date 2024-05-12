@@ -46,14 +46,9 @@ func NewIndexServiceWorker(DocNumEstimate int, dbtype int, DataDir string, local
 // hubType = 1,使用ServiceHub
 // heartBeat 心跳间隔时间
 // qps 代理模式限流参数
-func (service *IndexServiceWorker) Regist(etcdServers []string, servicePort int, heartBeat int64, hubType int, qps int) error {
+func (service *IndexServiceWorker) Regist(hub ServiceHub2.IServiceHub, servicePort int, heartBeat int64) error {
 	//1、设置注册中心
-	switch hubType {
-	case 1:
-		service.hub = ServiceHub2.GetServiceHub(etcdServers, heartBeat)
-	default:
-		service.hub = ServiceHub2.GetServiceHubProxy(etcdServers, heartBeat, qps)
-	}
+	service.hub = hub
 	//2、服务注册
 	leaseID, err := service.hub.Regist(INDEX_SERVICE, service.selfAddr, 0)
 	if err != nil {
@@ -87,7 +82,7 @@ func (service *IndexServiceWorker) DeleteDoc(ctx context.Context, docId *index.D
 
 // 向索引中添加文档(如果已存在，会先删除)
 func (service *IndexServiceWorker) AddDoc(ctx context.Context, doc *doc.Document) (*index.AffectedCount, error) {
-	n, err := service.Indexer.AddDoc(*doc)
+	n, err := service.Indexer.AddDoc(doc)
 	return &index.AffectedCount{Count: int32(n)}, err
 }
 
