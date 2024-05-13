@@ -42,11 +42,8 @@ func NewIndexServiceWorker(DocNumEstimate int, dbtype int, DataDir string, local
 	return service, nil
 }
 
-// 注册中心默认使用代理模式
-// hubType = 1,使用ServiceHub
-// heartBeat 心跳间隔时间
-// qps 代理模式限流参数
-func (service *IndexServiceWorker) Regist(hub ServiceHub2.IServiceHub, servicePort int, heartBeat int64) error {
+// 进行服务注册
+func (service *IndexServiceWorker) Regist(hub ServiceHub2.IServiceHub, heartBeat int64) error {
 	//1、设置注册中心
 	service.hub = hub
 	//2、服务注册
