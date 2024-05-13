@@ -19,8 +19,6 @@ type Config struct {
 	ReverseIndex ReverseIndex
 	// 单节点还是集群
 	ConfigType string `yaml:"configType"`
-	//分布式相关配置
-	Distributed Distributed
 	//服务注册中心配置
 	ServiceHub ServiceHub
 	// node节点配置
@@ -32,11 +30,6 @@ type Etcd struct {
 	DialTimeout int      `yaml:"dialTimeout"`
 	Username    string   `yaml:"username"`
 	Password    string   `yaml:"password"`
-}
-
-// 集群模式
-type Distributed struct {
-	Servers []string `yaml:"servers"` // 先注册到etcd上
 }
 
 // 集群模式下，node服务器配置

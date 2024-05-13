@@ -6,25 +6,20 @@ etcd:
   dialTimeout: 300
 # 正排索引配置
 forwardindex:
-  dbType: 1
-  dateDir: 192.168.92.201:6379
+  dbType: 1  #使用数据库类型
+  dateDir: 192.168.92.201:6379 #数据库地址
 # 倒排索引配置
 reverseindex:
-  indexType: 1
-  docNumEstimate: 1000
-# 单节点还是集群
-configType: proxy
-# 分布式相关配置
-distributed:
-  servers:
-  - 192.168.92.201:2379
-  - 192.168.92.201:2372
+  indexType: 1 #使用索引结构类型，默认是跳表
+  docNumEstimate: 1000 #文档数目预估
+# 单节点还是集群 node/cluster
+configType: cluster
 # 服务注册中心配置
 servicehub:
-  serviceHubType: cluster
+  serviceHubType: proxy
   qps: 10
   heartbeatFrequency: 3
-# node节点配置
+# 集群模式下node节点配置
 server :
   nodeIp : 192.168.92.201
   port : 5455
