@@ -14,7 +14,9 @@ type Research struct {
 	index_service.IIndexer
 }
 
-func NewResearch(c *etc.Config) (*Research, error) {
+// 创建Research服务
+// limiter 限流算法，使用默认令牌桶传输nil
+func NewResearch(c *etc.Config, limiter ServiceHub.Limiter) (*Research, error) {
 	var rs *Research
 	// 判断是单节点还是集群模式
 	// 1、分布式分为两个结构，客户端需要注册中心，服务端构造kv数据库
@@ -23,7 +25,11 @@ func NewResearch(c *etc.Config) (*Research, error) {
 	// 判断是单节点还是集群模式
 	switch c.ConfigType {
 	case "cluster":
-		rs.IIndexer = index_service.NewSentinel(NewServiceHub(c))
+		//判断是否使用了自定义的限流算法
+		if limiter == nil {
+			limiter = ServiceHub.NewTokenBucket(c.Limit.Capacity, c.Limit.Rate, c.Limit.Tokens)
+		}
+		rs.IIndexer = index_service.NewSentinel(NewServiceHub(c, limiter))
 	default:
 		rs.IIndexer = NewIndexer(c)
 	}
@@ -49,10 +55,14 @@ func NewEtcdClient(etcdConfig etcdv3.Config) *etcdv3.Client {
 }
 
 // 生产注册中心
-func NewServiceHub(c *etc.Config) ServiceHub.IServiceHub {
+func NewServiceHub(c *etc.Config, limiter ServiceHub.Limiter) ServiceHub.IServiceHub {
 	switch c.ServiceHub.ServiceHubType {
 	case "proxy":
-		return ServiceHub.GetServiceHubProxy(NewEtcdClient(c.GetEtcdConfig()), c.ServiceHub.HeartbeatFrequency, c.ServiceHub.Qps)
+		return ServiceHub.GetServiceHubProxy(
+			NewEtcdClient(c.GetEtcdConfig()),
+			c.ServiceHub.HeartbeatFrequency,
+			limiter,
+		)
 	default:
 		return ServiceHub.GetServiceHub(NewEtcdClient(c.GetEtcdConfig()), c.ServiceHub.HeartbeatFrequency)
 	}

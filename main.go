@@ -23,8 +23,8 @@ func main() {
 	if err != nil {
 		return
 	}
-	// 创建服务注册中心
-	serviceHub := NewServiceHub(c)
+	// 创建服务注册中心，不需要限流算法
+	serviceHub := NewServiceHub(c, nil)
 	// 向etcd注册服务节点
 	if err := worker.Regist(serviceHub, c.ServiceHub.HeartbeatFrequency); err != nil {
 		util.Log.Fatalf("服务注册失败: %v", err)
@@ -39,7 +39,6 @@ func main() {
 	// 注册服务
 	s := &grpc.Server{}
 	index.RegisterIndexServiceServer(s, worker)
-
 	// 启动服务器
 	if err := s.Serve(lis); err != nil {
 		util.Log.Fatalf("服务器启动失败: %v", err)

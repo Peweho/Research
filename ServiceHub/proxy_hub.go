@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 )
-import "golang.org/x/time/rate"
 
 type IServiceHub interface {
 	Regist(service string, endpoint string, leaseID etcdv3.LeaseID) (etcdv3.LeaseID, error) // 注册服务
@@ -24,7 +23,7 @@ type IServiceHub interface {
 type HubProxy struct {
 	*ServiceHub
 	endpointCache sync.Map //维护每一个service下的所有servers
-	limiter       *rate.Limiter
+	limiter       Limiter
 	watched       sync.Map // 记录监听的service
 }
 
@@ -34,7 +33,7 @@ var (
 )
 
 // proxy也是单例模式
-func GetServiceHubProxy(client *etcdv3.Client, heartbeatFrequency int64, qps int) *HubProxy {
+func GetServiceHubProxy(client *etcdv3.Client, heartbeatFrequency int64, limiter Limiter) *HubProxy {
 	if proxy != nil {
 		return proxy
 	}
@@ -43,7 +42,7 @@ func GetServiceHubProxy(client *etcdv3.Client, heartbeatFrequency int64, qps int
 		proxy = &HubProxy{
 			ServiceHub:    GetServiceHub(client, heartbeatFrequency),
 			endpointCache: sync.Map{},
-			limiter:       rate.NewLimiter(rate.Every(time.Duration(1e9/qps)*time.Nanosecond), qps), //每隔1E9/qps纳秒产生一个令牌，即一秒钟之内产生qps个令牌。令牌桶的容量为qps
+			limiter:       limiter,
 			watched:       sync.Map{},
 		}
 	})
@@ -91,13 +90,9 @@ func (proxy *HubProxy) watchEndpointsOfService(service string) {
 func (proxy *HubProxy) GetServiceEndpoints(service string) []string {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
-	//阻塞，直到桶中有1个令牌或超时。
-	err := proxy.limiter.Wait(ctx)
-	if err != nil {
-		return nil
-	}
 	// 获取令牌
-	if allow := proxy.limiter.Allow(); !allow {
+	if err := proxy.limiter.Allow(ctx); err != nil {
+		util.Log.Printf(err.Error())
 		return nil
 	}
 	// 本地缓存存在，直接返回结果

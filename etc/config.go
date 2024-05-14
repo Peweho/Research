@@ -21,6 +21,8 @@ type Config struct {
 	ConfigType string `yaml:"configType"`
 	//服务注册中心配置
 	ServiceHub ServiceHub
+	// 令牌桶配置
+	Limit Limit
 	// node节点配置
 	Server Server
 }
@@ -55,6 +57,13 @@ type ForwardIndex struct {
 type ReverseIndex struct {
 	IndexType      int `yaml:"indexType"`      // 索引类型
 	DocNumEstimate int `yaml:"docNumEstimate"` // 文档数量预估值
+}
+
+// 令牌桶配置
+type Limit struct {
+	Capacity int64   `yaml:"capacity"` // 令牌桶容量
+	Rate     float64 `yaml:"rate"`     // 放入令牌数量 个/s
+	Tokens   float64 `yaml:"tokens"`   // 初始令牌数量
 }
 
 var config *Config

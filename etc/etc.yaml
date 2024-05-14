@@ -17,8 +17,12 @@ configType: cluster
 # 服务注册中心配置
 servicehub:
   serviceHubType: proxy
-  qps: 10
   heartbeatFrequency: 3
+#限流，默认使用令牌桶算法
+limit:
+  capacity: # 令牌桶容量
+  rate:   # 放入令牌数量 个/s
+  tokens: # 初始令牌数量
 # 集群模式下node节点配置
 server :
   nodeIp : 192.168.92.201
