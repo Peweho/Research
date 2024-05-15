@@ -36,8 +36,9 @@ type Etcd struct {
 
 // 集群模式下，node服务器配置
 type Server struct {
-	NodeIp string `yaml:"nodeIp"`
-	Port   int    `yaml:"port"`
+	NodeIp string  `yaml:"nodeIp"`
+	Port   int     `yaml:"port"`
+	Weight float64 `yaml:"weight"`
 }
 
 // 注册中心配置
@@ -49,8 +50,10 @@ type ServiceHub struct {
 
 // 正排索引配置
 type ForwardIndex struct {
-	Dbtype  int    `yaml:"dbType"`  // 使用数据库类型
-	DateDir string `yaml:"dateDir"` // 数据库地址，redis是ip:端口号，;本地数据库，文件地址
+	Dbtype   string `yaml:"dbType"` // 使用数据库类型
+	Addr     string `yaml:"addr"`   // 数据库地址，redis是ip:端口号，;本地数据库，文件地址
+	Password string `yaml:"password"`
+	Dbno     string `yaml:"dbno"`
 }
 
 // 倒排索引配置
@@ -107,5 +110,13 @@ func (c *Config) GetEtcdConfig() etcdv3.Config {
 		DialTimeout: time.Duration(c.Etcd.DialTimeout),
 		Username:    c.Etcd.Username,
 		Password:    c.Etcd.Password,
+	}
+}
+
+func (c *Config) GetDateDir() string {
+	if c.ForwardIndex.Dbtype == "redis" {
+		return c.ForwardIndex.Addr + "/" + c.ForwardIndex.Password + "/" + c.ForwardIndex.Dbno
+	} else {
+		return c.ForwardIndex.Addr
 	}
 }

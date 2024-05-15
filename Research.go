@@ -71,10 +71,11 @@ func NewServiceHub(c *etc.Config, limiter ServiceHub.Limiter) ServiceHub.IServic
 // 生成单节索引
 func NewIndexer(c *etc.Config) *index_service.Indexer {
 	indexer := &index_service.Indexer{}
-	err := indexer.Init(c.ReverseIndex.DocNumEstimate, c.ForwardIndex.Dbtype, c.ForwardIndex.DateDir)
+	err := indexer.Init(c.ReverseIndex.DocNumEstimate, c.ForwardIndex.Dbtype, c.GetDateDir())
 	if err != nil {
 		util.Log.Fatalf("kvdb连接错误")
 	}
-	indexer.LoadFromIndexFile()
+	// 单节点加载全部key
+	indexer.LoadFromIndexFile(1)
 	return indexer
 }

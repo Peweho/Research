@@ -20,7 +20,7 @@ type Indexer struct {
 }
 
 // 初始化索引
-func (indexer *Indexer) Init(DocNumEstimate int, dbtype int, DataDir string) error {
+func (indexer *Indexer) Init(DocNumEstimate int, dbtype string, DataDir string) error {
 	db, err := kvdb.GetKvdb(dbtype, DataDir) //调用工厂方法，打开本地的KV数据库
 	if err != nil {
 		return err
@@ -32,9 +32,9 @@ func (indexer *Indexer) Init(DocNumEstimate int, dbtype int, DataDir string) err
 }
 
 // 从正排索引加载文件到倒排索引
-func (indexer *Indexer) LoadFromIndexFile() int {
+func (indexer *Indexer) LoadFromIndexFile(rate float64) int {
 	reader := bytes.NewReader([]byte{})
-	n := indexer.forwardIndex.IterDB(func(k, v []byte) error {
+	n := indexer.forwardIndex.IterKeyByWeight(rate, func(k, v []byte) error {
 		reader.Reset(v)
 		gobDecode := gob.NewDecoder(reader) // 构造gob反序列化器
 		// 反序列化

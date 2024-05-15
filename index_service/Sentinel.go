@@ -29,9 +29,9 @@ func NewSentinel(hub ServiceHub.IServiceHub) *Sentinel {
 	}
 }
 
-func (s *Sentinel) GetGrpcConn(endpoint string) *grpc.ClientConn {
+func (s *Sentinel) GetGrpcConn(endpoint *ServiceHub.EndPoint) *grpc.ClientConn {
 	//1、判断是否存在连接
-	if value, ok := s.connPool.Load(endpoint); ok {
+	if value, ok := s.connPool.Load(endpoint.SelfAddr); ok {
 		conn := value.(*grpc.ClientConn)
 		//1.1、判断连接是否可用
 		if conn.GetState() == connectivity.TransientFailure || conn.GetState() == connectivity.Shutdown {
@@ -49,7 +49,7 @@ func (s *Sentinel) GetGrpcConn(endpoint string) *grpc.ClientConn {
 	defer cancel()
 	conn, err := grpc.DialContext(
 		ctx,
-		endpoint,
+		endpoint.SelfAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()), // tls安全链接，传递了一个空证书
 		grpc.WithBlock()) // Dial是异步链接，设置Block会变为同步，（异步状态下ctx超时不会生效）
 	if err != nil {
@@ -57,8 +57,8 @@ func (s *Sentinel) GetGrpcConn(endpoint string) *grpc.ClientConn {
 		return nil
 	}
 
-	util.Log.Printf("connect to grpc server %s", endpoint)
-	s.connPool.Store(endpoint, conn)
+	util.Log.Printf("connect to grpc server %s", endpoint.SelfAddr)
+	s.connPool.Store(endpoint.SelfAddr, conn)
 	return conn
 }
 
@@ -66,7 +66,7 @@ func (s *Sentinel) GetGrpcConn(endpoint string) *grpc.ClientConn {
 func (s *Sentinel) AddDoc(document *doc.Document) (int, error) {
 	//1、获取服务器
 	endpoint := s.hub.GetServiceEndpoint(INDEX_SERVICE)
-	if len(endpoint) == 0 {
+	if endpoint == nil {
 		return 0, fmt.Errorf("there is no alive index worker")
 	}
 	//2、获取grpc连接
@@ -99,7 +99,7 @@ func (s *Sentinel) DeleteDoc(docId string) int {
 
 	for _, endpoint := range endpoints {
 		wg.Add(1)
-		go func(endpoint string) {
+		go func(endpoint *ServiceHub.EndPoint) {
 			defer wg.Done()
 			//2、获取grpc连接,并发发送删除请求
 			conn := s.GetGrpcConn(endpoint)
@@ -136,7 +136,7 @@ func (s *Sentinel) Search(query *term_query.TermQuery, onFlag *util.Bitmap, offF
 
 	for _, endpoint := range endpoints {
 		wg.Add(1)
-		go func(endpoint string) {
+		go func(endpoint *ServiceHub.EndPoint) {
 			defer wg.Done()
 			//2、获取grpc连接,并发发送删除请求
 			conn := s.GetGrpcConn(endpoint)
@@ -196,7 +196,7 @@ func (s *Sentinel) Count() int {
 
 	for _, endpoint := range endpoints {
 		wg.Add(1)
-		go func(endpoint string) {
+		go func(endpoint *ServiceHub.EndPoint) {
 			defer wg.Done()
 			//2、获取grpc连接,并发发送删除请求
 			conn := s.GetGrpcConn(endpoint)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Research/ServiceHub"
 	"Research/etc"
 	"Research/index_service"
 	"Research/types/index"
@@ -17,9 +18,8 @@ func main() {
 	worker, err := index_service.NewIndexServiceWorker(
 		c.ReverseIndex.DocNumEstimate,
 		c.ForwardIndex.Dbtype,
-		c.ForwardIndex.DateDir,
-		c.Server.NodeIp,
-		c.Server.Port)
+		c.GetDateDir(),
+		ServiceHub.NewEndPoint(c.Server.NodeIp, c.Server.Port, c.Server.Weight))
 	if err != nil {
 		return
 	}
@@ -30,6 +30,8 @@ func main() {
 		util.Log.Fatalf("服务注册失败: %v", err)
 		return
 	}
+	// 根据权重加载数据
+	worker.Indexer.LoadFromIndexFile(worker.Endpoint.Weight)
 	//监听端口
 	lis, err := net.Listen("tcp", strconv.Itoa(c.Server.Port))
 	if err != nil {

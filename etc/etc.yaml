@@ -6,8 +6,10 @@ etcd:
   dialTimeout: 300
 # 正排索引配置
 forwardindex:
-  dbType: 1  #使用数据库类型
-  dateDir: 192.168.92.201:6379 #数据库地址
+  dbType: redis  #使用数据库类型
+  addr: 192.168.92.201:6379 #数据库地址
+  password:
+  dbno: #数据库仓库
 # 倒排索引配置
 reverseindex:
   indexType: 1 #使用索引结构类型，默认是跳表
@@ -27,3 +29,4 @@ limit:
 server :
   nodeIp : 192.168.92.201
   port : 5455
+  weight: 0.15 # 服务器节点权重，最大为1

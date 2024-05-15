@@ -5,7 +5,6 @@ import (
 	"Research/types/doc"
 	"Research/types/index"
 	"context"
-	"fmt"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"time"
 )
@@ -17,16 +16,15 @@ const (
 type IndexServiceWorker struct {
 	Indexer  *Indexer
 	hub      ServiceHub2.IServiceHub
-	selfAddr string
+	Endpoint *ServiceHub2.EndPoint
 }
 
 // 创建IndexServiceWorker，
 // DocNumEstimate 对文档数量的预估
 // dbtype 正排索引类型
 // DataDir 正排索引地址
-// localIp 本机内网Ip
-// servicePort 服务暴露端口号，应大于1024
-func NewIndexServiceWorker(DocNumEstimate int, dbtype int, DataDir string, localIp string, servicePort int) (*IndexServiceWorker, error) {
+// endpoint 节点信息
+func NewIndexServiceWorker(DocNumEstimate int, dbtype string, DataDir string, endpoint *ServiceHub2.EndPoint) (*IndexServiceWorker, error) {
 	service := &IndexServiceWorker{}
 	// 1、初始化索引
 	service.Indexer = new(Indexer)
@@ -34,11 +32,8 @@ func NewIndexServiceWorker(DocNumEstimate int, dbtype int, DataDir string, local
 	if err != nil {
 		return nil, err
 	}
-	// 2、设置本机地址
-	if servicePort <= 1024 {
-		return nil, fmt.Errorf("invalid listen port %d, should more than 1024", servicePort)
-	}
-	service.selfAddr = fmt.Sprintf("%s:%s", localIp, servicePort)
+	// 2、设置本机信息
+	service.Endpoint = endpoint
 	return service, nil
 }
 
@@ -47,14 +42,14 @@ func (service *IndexServiceWorker) Regist(hub ServiceHub2.IServiceHub, heartBeat
 	//1、设置注册中心
 	service.hub = hub
 	//2、服务注册
-	leaseID, err := service.hub.Regist(INDEX_SERVICE, service.selfAddr, 0)
+	leaseID, err := service.hub.Regist(INDEX_SERVICE, service.Endpoint, 0)
 	if err != nil {
 		panic(err)
 	}
 	//3、异步进行续约
 	go func(Id clientv3.LeaseID) {
 		for {
-			Id, err = service.hub.Regist(INDEX_SERVICE, service.selfAddr, Id)
+			Id, err = service.hub.Regist(INDEX_SERVICE, service.Endpoint, Id)
 			if err != nil {
 				return
 			}
@@ -67,7 +62,7 @@ func (service *IndexServiceWorker) Regist(hub ServiceHub2.IServiceHub, heartBeat
 // 关闭索引
 func (service *IndexServiceWorker) Close() error {
 	if service.hub != nil {
-		service.hub.UnRegist(INDEX_SERVICE, service.selfAddr)
+		service.hub.UnRegist(INDEX_SERVICE, service.Endpoint)
 	}
 	return service.Indexer.Close()
 }

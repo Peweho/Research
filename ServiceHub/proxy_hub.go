@@ -2,7 +2,9 @@ package ServiceHub
 
 import (
 	"Research/util"
+	"bytes"
 	"context"
+	"encoding/gob"
 	etcdv3 "go.etcd.io/etcd/client/v3"
 	"log"
 	"strings"
@@ -11,11 +13,11 @@ import (
 )
 
 type IServiceHub interface {
-	Regist(service string, endpoint string, leaseID etcdv3.LeaseID) (etcdv3.LeaseID, error) // 注册服务
-	UnRegist(service string, endpoint string) error                                         // 注销服务
-	GetServiceEndpoints(service string) []string                                            //服务发现
-	GetServiceEndpoint(service string) string                                               //选择服务的一台endpoint
-	Close()                                                                                 //关闭etcd client connection
+	Regist(service string, endpoint *EndPoint, leaseID etcdv3.LeaseID) (etcdv3.LeaseID, error) // 注册服务
+	UnRegist(service string, endpoint *EndPoint) error                                         // 注销服务
+	GetServiceEndpoints(service string) []*EndPoint                                            //服务发现
+	GetServiceEndpoint(service string) *EndPoint                                               //选择服务的一台endpoint
+	Close()                                                                                    //关闭etcd client connection
 }
 
 // 代理模式。对ServiceHub做一层代理，想访问endpoints时需要通过代理，代理提供了2个功能：缓存和限流保护
@@ -87,7 +89,7 @@ func (proxy *HubProxy) watchEndpointsOfService(service string) {
 }
 
 // 获取指定service下的point
-func (proxy *HubProxy) GetServiceEndpoints(service string) []string {
+func (proxy *HubProxy) GetServiceEndpoints(service string) []*EndPoint {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	// 获取令牌
@@ -97,20 +99,31 @@ func (proxy *HubProxy) GetServiceEndpoints(service string) []string {
 	}
 	// 本地缓存存在，直接返回结果
 	if value, ok := proxy.endpointCache.Load(service); ok {
-		serviceEndpointsMap := value.(*map[string]bool)
-		res := make([]string, 0, len((*serviceEndpointsMap)))
-		for key, _ := range *serviceEndpointsMap {
-			endpoint := key
-			res = append(res, endpoint)
+		serviceEndpointsMap := value.(*map[string][]byte)
+		res := make([]*EndPoint, 0, len((*serviceEndpointsMap)))
+		reader := bytes.NewReader([]byte{})
+		for key, val := range *serviceEndpointsMap {
+			// 反序列化
+			var endpoint EndPoint
+			reader.Reset(val)
+			decoder := gob.NewDecoder(reader)
+			if err := decoder.Decode(&endpoint); err != nil {
+				util.Log.Println("proxy缓存反序列化错误，key:", key)
+			}
+			res = append(res, &endpoint)
 		}
 		return res
 	}
 
 	// 本地缓存不存在，从etcd中进行全量同步
 	endpoints := proxy.GetServiceEndpoints(service) // 查询etcd
-	serviceMap := make(map[string]bool, len(endpoints))
+	serviceMap := make(map[string][]byte, len(endpoints))
 	for i := 0; i < len(endpoints); i++ {
-		serviceMap[endpoints[i]] = true
+		// 序列化
+		var buffer bytes.Buffer
+		val := gob.NewEncoder(&buffer)
+		_ = val.Encode(endpoints[i])
+		serviceMap[endpoints[i].SelfAddr] = buffer.Bytes()
 	}
 	proxy.endpointCache.Store(service, &serviceMap) // 向本地缓存中存储
 	// 监听该service，进行增量同步

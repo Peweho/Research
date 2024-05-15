@@ -16,31 +16,32 @@ const (
 )
 
 type IKeyValueDB interface {
-	Open() error                              //初始化DB
-	GetDbPath() string                        //获取存储数据的目录
-	Set(k, v []byte) error                    //写入<key, value>
-	BatchSet(keys, values [][]byte) error     //批量写入<key, value>
-	Get(k []byte) ([]byte, error)             //读取key对应的value
-	BatchGet(keys [][]byte) ([][]byte, error) //批量读取，注意不保证顺序
-	Delete(k []byte) error                    //删除
-	BatchDelete(keys [][]byte) error          //批量删除
-	Has(k []byte) bool                        //判断某个key是否存在
-	IterDB(fn func(k, v []byte) error) int64  //遍历数据库，返回数据的条数
-	IterKey(fn func(k []byte) error) int64    //遍历所有key，返回数据的条数
-	Close() error                             //把内存中的数据flush到磁盘，同时释放文件锁
+	Open() error                                                    //初始化DB
+	GetDbPath() string                                              //获取存储数据的目录
+	Set(k, v []byte) error                                          //写入<key, value>
+	BatchSet(keys, values [][]byte) error                           //批量写入<key, value>
+	Get(k []byte) ([]byte, error)                                   //读取key对应的value
+	BatchGet(keys [][]byte) ([][]byte, error)                       //批量读取，注意不保证顺序
+	Delete(k []byte) error                                          //删除
+	BatchDelete(keys [][]byte) error                                //批量删除
+	Has(k []byte) bool                                              //判断某个key是否存在
+	IterDB(fn func(k, v []byte) error) int64                        //遍历数据库，返回数据的条数
+	IterKey(fn func(k []byte) error) int64                          //遍历所有key，返回数据的条数
+	IterKeyByWeight(rate float64, fn func(k, v []byte) error) int64 // 根据比例遍历kv
+	Close() error                                                   //把内存中的数据flush到磁盘，同时释放文件锁
 }
 
 // Factory工厂模式，把类的创建和使用分隔开。Get函数就是一个工厂，它返回产品的接口，即它可以返回各种各样的具体产品。
-func GetKvdb(dbtype int, path string) (IKeyValueDB, error) {
+func GetKvdb(dbtype string, path string) (IKeyValueDB, error) {
 	var db IKeyValueDB
 	switch dbtype {
-	case REDIS:
+	case "redis":
 		optsRedis, err := connectRemoteKvdb(path)
 		if err != nil {
 			return nil, err
 		}
 		db = NewRedis(optsRedis...)
-	case BADGER:
+	case "BADGER":
 		// todo: 添加这两个类
 		err := createLocalKvdb(path)
 		if err != nil {

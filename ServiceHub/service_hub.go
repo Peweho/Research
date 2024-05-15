@@ -2,7 +2,9 @@ package ServiceHub
 
 import (
 	"Research/util"
+	"bytes"
 	"context"
+	"encoding/gob"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	etcdv3 "go.etcd.io/etcd/client/v3"
 	"strings"
@@ -56,7 +58,7 @@ func (hub *ServiceHub) SetLoadBalancer(balancer LoadBalancer) {
 // endpoint 微服务server的地址
 //
 // leaseID 租约ID,第一次注册时置为0即可
-func (hub *ServiceHub) Regist(service string, endpoint string, leaseID etcdv3.LeaseID) (etcdv3.LeaseID, error) {
+func (hub *ServiceHub) Regist(service string, endpoint *EndPoint, leaseID etcdv3.LeaseID) (etcdv3.LeaseID, error) {
 	ctx := context.Background()
 	//1、根据租约ID判断是创建租约还是续约
 	if leaseID <= 0 {
@@ -66,9 +68,13 @@ func (hub *ServiceHub) Regist(service string, endpoint string, leaseID etcdv3.Le
 			return 0, err
 		} else {
 			//2.1、构造服务key
-			key := strings.TrimRight(SERVICE_ROOT_PATH, "/") + "/" + service + "/" + endpoint
+			key := strings.TrimRight(SERVICE_ROOT_PATH, "/") + "/" + service + "/" + endpoint.SelfAddr
+			//endpoint序列化到etcd中
+			var buffer bytes.Buffer
+			val := gob.NewEncoder(&buffer)
+			_ = val.Encode(*endpoint)
 			//2.2、注册服务
-			if _, err := hub.client.Put(ctx, key, "", etcdv3.WithLease(lease.ID)); err != nil {
+			if _, err := hub.client.Put(ctx, key, buffer.String(), etcdv3.WithLease(lease.ID)); err != nil {
 				util.Log.Printf("写入服务%s对应的节点%s失败：%v", service, endpoint, err)
 				return lease.ID, err
 			} else {
@@ -90,37 +96,44 @@ func (hub *ServiceHub) Regist(service string, endpoint string, leaseID etcdv3.Le
 }
 
 // 注销服务
-func (hub *ServiceHub) UnRegist(service string, endpoint string) error {
+func (hub *ServiceHub) UnRegist(service string, endpoint *EndPoint) error {
 	ctx := context.Background()
-	key := strings.TrimRight(SERVICE_ROOT_PATH, "/") + "/" + service + "/" + endpoint
+	key := strings.TrimRight(SERVICE_ROOT_PATH, "/") + "/" + service + "/" + endpoint.SelfAddr
 	if _, err := hub.client.Delete(ctx, key); err != nil {
-		util.Log.Printf("注销服务%s对应的节点%s失败: %v", service, endpoint, err)
+		util.Log.Printf("注销服务%s对应的节点%s失败: %v", service, endpoint.SelfAddr, err)
 		return err
 	} else {
-		util.Log.Printf("注销服务%s对应的节点%s", service, endpoint)
+		util.Log.Printf("注销服务%s对应的节点%s", service, endpoint.SelfAddr)
 		return nil
 	}
 }
 
 // 服务发现。client每次进行RPC调用之前都查询etcd，获取server集合，然后采用负载均衡算法选择一台server。或者也可以把负载均衡的功能放到注册中心，即放到getServiceEndpoints函数里，让它只返回一个server
-func (hub *ServiceHub) GetServiceEndpoints(service string) []string {
+func (hub *ServiceHub) GetServiceEndpoints(service string) []*EndPoint {
 	ctx := context.Background()
 	//获取服务
 	if resp, err := hub.client.Get(ctx, service, etcdv3.WithPrefix()); err != nil {
 		util.Log.Printf("获取服务%s的节点失败: %v", service, err)
 		return nil
 	} else {
-		endpoints := make([]string, 0, len(resp.Kvs))
+		endpoints := make([]*EndPoint, 0, len(resp.Kvs))
+		reader := bytes.NewReader([]byte{})
 		for _, val := range resp.Kvs {
-			res := strings.Split(string(val.Key), "/")
-			endpoints = append(endpoints, res[len(res)-1])
+			// res := strings.Split(string(val.Key), "/")
+			var endpoint EndPoint
+			reader.Reset(val.Value)
+			decoder := gob.NewDecoder(reader)
+			if err := decoder.Decode(&endpoint); err != nil {
+				util.Log.Println("etcd反序列化错误，key:", val.Key)
+			}
+			endpoints = append(endpoints, &endpoint)
 		}
 		return endpoints
 	}
 }
 
 // 先查找服务节点，再通过负载均衡策略从多个节点中选择合适节点
-func (hub *ServiceHub) GetServiceEndpoint(service string) string {
+func (hub *ServiceHub) GetServiceEndpoint(service string) *EndPoint {
 	return hub.loadBalancer.Take(hub.GetServiceEndpoints(service))
 }
 
