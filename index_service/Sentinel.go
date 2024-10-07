@@ -4,13 +4,18 @@ import (
 	"Research/ServiceHub"
 	"Research/types/doc"
 	"Research/types/index"
+	"Research/types/raft"
 	"Research/types/term_query"
 	"Research/util"
+	"bytes"
 	"context"
+	"encoding/gob"
+	"errors"
 	"fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -74,10 +79,12 @@ func (s *Sentinel) AddDoc(document *doc.Document) (int, error) {
 	if conn == nil {
 		return 0, fmt.Errorf("connect to worker %s failed", endpoint)
 	}
-	//3、创建客户端
-	client := index.NewIndexServiceClient(conn)
-	//4、发送grpc请求
-	affected, err := client.AddDoc(context.Background(), document)
+	////3、创建客户端
+	//client := index.NewIndexServiceClient(conn)
+	////4、发送grpc请求
+	//affected, err := client.AddDoc(context.Background(), document)
+	resp, err := RaftClintRequest(conn, 1, document, nil, nil, nil, nil, nil)
+	affected := resp.(*index.AffectedCount)
 	if err != nil {
 		return 0, err
 	}
@@ -106,10 +113,12 @@ func (s *Sentinel) DeleteDoc(docId string) int {
 			if conn == nil {
 				return
 			}
-			//3、创建客户端
-			client := index.NewIndexServiceClient(conn)
-			//4、发送grpc请求
-			affected, err := client.DeleteDoc(context.Background(), &index.DocId{DocId: docId})
+			////3、创建客户端
+			//client := index.NewIndexServiceClient(conn)
+			////4、发送grpc请求
+			//affected, err := client.DeleteDoc(context.Background(), &index.DocId{DocId: docId})
+			resp, err := RaftClintRequest(conn, 2, nil, &index.DocId{DocId: docId}, nil, nil, nil, nil)
+			affected := resp.(*index.AffectedCount)
 			if err != nil {
 				util.Log.Printf("delete doc %s from worker %s failed: %s", docId, endpoint, err)
 			} else if affected.Count > 0 {
@@ -143,14 +152,16 @@ func (s *Sentinel) Search(query *term_query.TermQuery, onFlag *util.Bitmap, offF
 			if conn == nil {
 				return
 			}
-			//3、创建客户端
-			client := index.NewIndexServiceClient(conn)
-			//4、发送grpc请求
-			affected, err := client.Search(context.Background(), &index.SearchRequest{
-				OnFlag:  onFlag,
-				OffFlag: offFlag,
-				OrFlags: orFlags,
-			})
+			////3、创建客户端
+			//client := index.NewIndexServiceClient(conn)
+			////4、发送grpc请求
+			//affected, err := client.Search(context.Background(), &index.SearchRequest{
+			//	OnFlag:  onFlag,
+			//	OffFlag: offFlag,
+			//	OrFlags: orFlags,
+			//})
+			resp, err := RaftClintRequest(conn, 3, nil, nil, query, onFlag, offFlag, orFlags)
+			affected := resp.(*index.SearchResult)
 			if err != nil {
 				util.Log.Printf("search from cluster failed: %s", err)
 			} else {
@@ -227,4 +238,109 @@ func (s *Sentinel) Close() error {
 	})
 	s.hub.Close()
 	return nil
+}
+
+func RaftClintRequest(conn *grpc.ClientConn, reqType int64, document *doc.Document, docId *index.DocId, query *term_query.TermQuery, onFlag *util.Bitmap, offFlag *util.Bitmap, orFlags []*util.Bitmap) (any, error) {
+	client := raft.NewResearchClientServiceClient(conn)
+
+	var args []string
+	switch reqType {
+	case 1:
+		args = make([]string, 1)
+		str, err := Serialize[*doc.Document](document)
+		if err != nil {
+			return nil, err
+		}
+		args[0] = str
+		research, err := client.Research(context.Background(), &raft.ResearchRequest{
+			ReqType: &reqType,
+			Args:    args,
+		})
+		if err != nil || len(research.Values) == 0 {
+			return nil, err
+		}
+		target, err := DeserializeAffectedCount(research.Values[0])
+		return target, err
+	case 2:
+		args = make([]string, 1)
+		str, err := Serialize[*index.DocId](docId)
+		if err != nil {
+			return nil, err
+		}
+		args[0] = str
+		research, err := client.Research(context.Background(), &raft.ResearchRequest{
+			ReqType: &reqType,
+			Args:    args,
+		})
+		target, err := DeserializeAffectedCount(research.Values[0])
+		return target, err
+	case 3:
+		args = make([]string, 4)
+		str1, err := Serialize[*term_query.TermQuery](query)
+		if err != nil {
+			return nil, err
+		}
+		args[0] = str1
+		str2, err := Serialize[*util.Bitmap](onFlag)
+		if err != nil {
+			return nil, err
+		}
+		args[1] = str2
+		str3, err := Serialize[*util.Bitmap](offFlag)
+		if err != nil {
+			return nil, err
+		}
+		args[2] = str3
+		str4, err := Serialize[[]*util.Bitmap](orFlags)
+		if err != nil {
+			return nil, err
+		}
+		args[3] = str4
+		research, err := client.Research(context.Background(), &raft.ResearchRequest{
+			ReqType: &reqType,
+			Args:    args,
+		})
+		target, err := DeserializeSearchResult(research.Values)
+		if err != nil {
+			return nil, err
+		}
+		return target, err
+	}
+	return nil, errors.New("unknown request type")
+}
+
+func DeserializeAffectedCount(s string) (target *index.AffectedCount, err error) {
+	atoi, err := strconv.Atoi(s)
+	if err != nil {
+		return
+	}
+	target = &index.AffectedCount{
+		Count: int32(atoi),
+	}
+	return
+}
+
+func DeserializeSearchResult(s []string) (target *index.SearchResult, err error) {
+	reader := bytes.NewReader([]byte{})
+	target.Results = make([]*doc.Document, len(s))
+	for i := 0; i < len(s); i++ {
+		reader.Reset([]byte(s[i]))
+		decoder := gob.NewDecoder(reader)
+		err = decoder.Decode(target.Results[i])
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+func Serialize[T *doc.Document | *index.DocId | *term_query.TermQuery | *util.Bitmap | []*util.Bitmap](input T) (str string, err error) {
+	var buffer bytes.Buffer
+	encoder := gob.NewEncoder(&buffer)
+	err = encoder.Encode(input)
+	if err != nil {
+		return
+	}
+	str = buffer.String()
+	return
 }
