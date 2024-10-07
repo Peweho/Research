@@ -1,0 +1,23 @@
+syntax = "proto2";
+
+package raft;
+
+option go_package = "Research/types/raft";
+
+service ResearchClientService {
+  rpc research(ResearchRequest) returns(ResearchResponse);
+}
+
+message ResearchRequest {
+  required int64 reqType = 1; // 1: add, 2: delete, 3: search
+  repeated string args = 2;
+}
+
+message ResearchResponse {
+  repeated string values = 1; // 序列化后的结果
+  required bool success = 2;
+  optional string redirect = 3;
+  optional string errorMsg = 4;
+}
+
+

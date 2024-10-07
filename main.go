@@ -4,7 +4,8 @@ import (
 	"Research/ServiceHub"
 	"Research/etc"
 	"Research/index_service"
-	"Research/types/index"
+	raftreq "Research/raft"
+	"Research/types/raft"
 	"Research/util"
 	"google.golang.org/grpc"
 	"net"
@@ -40,7 +41,8 @@ func main() {
 
 	// 注册服务
 	s := &grpc.Server{}
-	index.RegisterIndexServiceServer(s, worker)
+	//index.RegisterIndexServiceServer(s, worker)
+	raft.RegisterResearchClientServiceServer(s, raftreq.NewRaftRequest(worker))
 	// 启动服务器
 	if err := s.Serve(lis); err != nil {
 		util.Log.Fatalf("服务器启动失败: %v", err)
