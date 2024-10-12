@@ -5,6 +5,7 @@ import (
 	"Research/etc"
 	"Research/index_service"
 	raftreq "Research/raft"
+	"Research/types/index"
 	"Research/types/raft"
 	"Research/util"
 	"google.golang.org/grpc"
@@ -41,7 +42,9 @@ func main() {
 
 	// 注册服务
 	s := &grpc.Server{}
-	//index.RegisterIndexServiceServer(s, worker)
+	// 非事务请求
+	index.RegisterIndexServiceServer(s, worker)
+	//事务请求走raft算法协商
 	raft.RegisterResearchClientServiceServer(s, raftreq.NewRaftRequest(worker))
 	// 启动服务器
 	if err := s.Serve(lis); err != nil {
