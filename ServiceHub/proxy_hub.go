@@ -16,8 +16,9 @@ type IServiceHub interface {
 	Regist(service string, endpoint *EndPoint, leaseID etcdv3.LeaseID) (etcdv3.LeaseID, error) // 注册服务
 	UnRegist(service string, endpoint *EndPoint) error                                         // 注销服务
 	GetServiceEndpoints(service string) []*EndPoint                                            //服务发现
-	GetServiceEndpoint(service string) *EndPoint                                               //选择服务的一台endpoint
-	Close()                                                                                    //关闭etcd client connection
+	GetServiceEndpoint(service string) *EndPoint
+	SetLoadBalancer(balancer LoadBalancer) //选择服务的一台endpoint
+	Close()                                //关闭etcd client connection
 }
 
 // 代理模式。对ServiceHub做一层代理，想访问endpoints时需要通过代理，代理提供了2个功能：缓存和限流保护
@@ -116,7 +117,7 @@ func (proxy *HubProxy) GetServiceEndpoints(service string) []*EndPoint {
 	}
 
 	// 本地缓存不存在，从etcd中进行全量同步
-	endpoints := proxy.GetServiceEndpoints(service) // 查询etcd
+	endpoints := proxy.ServiceHub.GetServiceEndpoints(service) // 查询etcd
 	serviceMap := make(map[string][]byte, len(endpoints))
 	for i := 0; i < len(endpoints); i++ {
 		// 序列化

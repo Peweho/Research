@@ -22,15 +22,15 @@ import (
 )
 
 type Sentinel struct {
-	hub      ServiceHub.IServiceHub // 从Hub上获取IndexServiceWorker集合。可能是直接访问ServiceHub，也可能是走代理
-	connPool sync.Map               // 与各个IndexServiceWorker建立的连接。把连接缓存起来，避免每次都重建连接
+	ServiceHub.IServiceHub          // 从Hub上获取IndexServiceWorker集合。可能是直接访问ServiceHub，也可能是走代理
+	connPool               sync.Map // 与各个IndexServiceWorker建立的连接。把连接缓存起来，避免每次都重建连接
 }
 
 // 创建哨兵
 func NewSentinel(hub ServiceHub.IServiceHub) *Sentinel {
 	return &Sentinel{
-		hub:      hub,
-		connPool: sync.Map{},
+		IServiceHub: hub,
+		connPool:    sync.Map{},
 	}
 }
 
@@ -70,7 +70,7 @@ func (s *Sentinel) GetGrpcConn(endpoint *ServiceHub.EndPoint) *grpc.ClientConn {
 // 将文档添加到一个节点上
 func (s *Sentinel) AddDoc(document *doc.Document) (int, error) {
 	//1、获取服务器
-	endpoint := s.hub.GetServiceEndpoint(INDEX_SERVICE)
+	endpoint := s.GetServiceEndpoint(INDEX_SERVICE)
 	if endpoint == nil {
 		return 0, fmt.Errorf("there is no alive index worker")
 	}
@@ -96,7 +96,7 @@ func (s *Sentinel) AddDoc(document *doc.Document) (int, error) {
 // 从集群中删除一个文档，需要遍历集群所有节点，异步完成，
 func (s *Sentinel) DeleteDoc(docId string) int {
 	//1、获取服务器
-	endpoints := s.hub.GetServiceEndpoints(INDEX_SERVICE)
+	endpoints := s.GetServiceEndpoints(INDEX_SERVICE)
 	if len(endpoints) == 0 {
 		return 0
 	}
@@ -134,7 +134,7 @@ func (s *Sentinel) DeleteDoc(docId string) int {
 // 从集群上查找，合并查询的结果
 func (s *Sentinel) Search(query *term_query.TermQuery, onFlag *util.Bitmap, offFlag *util.Bitmap, orFlags []*util.Bitmap) []*doc.Document {
 	//1、获取服务器
-	endpoints := s.hub.GetServiceEndpoints(INDEX_SERVICE)
+	endpoints := s.GetServiceEndpoints(INDEX_SERVICE)
 	if len(endpoints) == 0 {
 		return nil
 	}
@@ -197,7 +197,7 @@ func (s *Sentinel) Search(query *term_query.TermQuery, onFlag *util.Bitmap, offF
 
 func (s *Sentinel) Count() int {
 	//1、获取服务器
-	endpoints := s.hub.GetServiceEndpoints(INDEX_SERVICE)
+	endpoints := s.GetServiceEndpoints(INDEX_SERVICE)
 	if len(endpoints) == 0 {
 		return 0
 	}
@@ -236,7 +236,7 @@ func (s *Sentinel) Close() error {
 		_ = conn.Close()
 		return true
 	})
-	s.hub.Close()
+	s.Close()
 	return nil
 }
 
