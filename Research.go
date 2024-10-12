@@ -5,6 +5,7 @@ import (
 	"Research/ServiceHub"
 	"Research/etc"
 	"Research/util"
+	"errors"
 	etcdv3 "go.etcd.io/etcd/client/v3"
 	"strings"
 )
@@ -78,4 +79,14 @@ func NewIndexer(c *etc.Config) *index_service.Indexer {
 	// 单节点加载全部key
 	indexer.LoadFromIndexFile(1)
 	return indexer
+}
+
+func (r *Research) SetLoadBalancer(lb ServiceHub.LoadBalancer) error {
+	//	 判断是否是集群模式
+	sentinel, ok := r.IIndexer.(*index_service.Sentinel)
+	if !ok {
+		return errors.New("集群模式下才能进行负载均衡方案切换")
+	}
+	sentinel.IServiceHub.SetLoadBalancer(lb)
+	return nil
 }
