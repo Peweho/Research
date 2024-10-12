@@ -27,6 +27,12 @@ limit:
   tokens: # 初始令牌数量
 # 集群模式下node节点配置
 server :
+  groupId: research1 # 根据该id分配到不同的集群
   nodeIp : 192.168.92.201
   port : 5455
   weight: 0.15 # 服务器节点权重，最大为1
+
+# 集群模式下master节点配置
+master:
+  groupId: research1,research2 # 服务名
+  virtualNodeNum: 100,200  # 每个服务下虚拟节点数量
